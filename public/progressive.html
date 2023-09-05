@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ChatGPT Demo</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <style>
+      .chat-container {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 5px 2px rgba(182 219 255);
+      }
+
+      .messages {
+        flex-grow: 1;
+        overflow-y: auto;
+      }
+
+      .message-input-container {
+        display: flex;
+        align-items: flex-end;
+        padding: 10px;
+      }
+
+      .message-input {
+        flex-grow: 1;
+        margin-right: 10px;
+      }
+
+      .send-button {
+        min-width: 80px;
+        align-self: flex-end;
+        background-color: #20bddd !important;
+        color: white !important;
+      }
+
+      form {
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 10px;
+        transition: box-shadow 0.3s;
+      }
+
+      form:focus-within {
+        box-shadow: 0 0 5px 2px rgba(0, 123, 255, 0.5);
+      }
+
+      textarea {
+        border: none;
+        padding: 5px;
+        resize: none;
+        overflow: hidden;
+      }
+
+      textarea:focus {
+        outline: none !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+
+      .message-input {
+        border: none;
+        padding: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container chat-container my-5">
+      <h1 class="mb-5">ChatGPT Demo</h1>
+      <div id="chat" class="d-flex flex-column">
+        <div id="messages" class="messages"></div>
+        <div id="loader" class="text-center my-3" style="display: none">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+        <form id="message-form" class="message-input-container form-box-shadow">
+          <textarea
+            id="message-input"
+            class="form-control message-input"
+            rows="3"
+            placeholder="Type a message..."
+            oninput="autoResizeTextarea()"
+          ></textarea>
+          <button type="submit" class="btn btn-info send-button">
+            <i class="fas fa-paper-plane"> Send</i>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.24.0/axios.min.js"></script>
+    <script>
+      const messagesElement = document.getElementById("messages");
+      const messageForm = document.getElementById("message-form");
+      const messageInput = document.getElementById("message-input");
+      const loaderElement = document.getElementById("loader");
+
+      function autoResizeTextarea() {
+        messageInput.style.height = "auto";
+        messageInput.style.height = messageInput.scrollHeight + "px";
+      }
+
+      function resetTextareaSize() {
+        messageInput.style.height = ""; // Menghapus ukuran yang ditetapkan sebelumnya
+      }
+
+      messageForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const message = messageInput.value.trim();
+        if (message !== "") {
+          resetTextareaSize();
+          appendMessage("user", message);
+          messageInput.value = "";
+
+          showLoader();
+
+          try {
+            const response = await axios.post("/chat", { message });
+            const reply = response.data.reply;
+            appendMessage("assistant", reply);
+          } catch (error) {
+            console.error("Error:", error);
+            appendMessage("system", "An error occurred");
+          }
+
+          hideLoader();
+        }
+      });
+
+      function showLoader() {
+        loaderElement.style.display = "block";
+      }
+
+      function hideLoader() {
+        loaderElement.style.display = "none";
+      }
+
+      function appendMessage(role, content) {
+        const messageElement = document.createElement("div");
+        messageElement.classList.add("mb-3");
+        messageElement.classList.add(
+          role === "user" ? "text-end" : "text-start"
+        );
+
+        const cardElement = document.createElement("div");
+        cardElement.classList.add("card", "d-inline-block");
+        cardElement.style.maxWidth = "1200px";
+
+        const cardBodyElement = document.createElement("div");
+        cardBodyElement.classList.add("card-body", "text-start");
+
+        // render
+        const contentParts = content.split("\n");
+        showAnswerProgressively(contentParts, cardBodyElement, 0);
+
+        cardElement.appendChild(cardBodyElement);
+        messageElement.appendChild(cardElement);
+
+        messagesElement.appendChild(messageElement);
+        messagesElement.scrollTop = messagesElement.scrollHeight;
+      }
+
+      function showAnswerProgressively(contentParts, cardBodyElement, idx) {
+        const answerPartElement = document.createElement("p");
+        answerPartElement.classList.add("card-text");
+        cardBodyElement.appendChild(answerPartElement);
+        const answerPart = contentParts[idx];
+
+        let currentIndex = 0;
+        const intervalId = setInterval(() => {
+          if (answerPart == undefined) {
+            clearInterval(intervalId);
+          } else {
+            if (currentIndex < answerPart.length) {
+              const currentText = answerPart.slice(0, currentIndex + 1);
+              answerPartElement.textContent = currentText;
+              cardBodyElement.scrollTop = cardBodyElement.scrollHeight;
+              currentIndex++;
+            } else {
+              clearInterval(intervalId);
+              if (idx < contentParts.length) {
+                showAnswerProgressively(contentParts, cardBodyElement, idx + 1);
+              }
+            }
+          }
+        }, 10);
+      }
+    </script>
+  </body>
+</html>

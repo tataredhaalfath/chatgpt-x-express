@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ChatGPT Demo</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <style>
+      .chat-container {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 5px 2px rgba(182 219 255);
+      }
+
+      .messages {
+        flex-grow: 1;
+        overflow-y: auto;
+      }
+
+      .message-input-container {
+        display: flex;
+        align-items: flex-end;
+        padding: 10px;
+      }
+
+      .message-input {
+        flex-grow: 1;
+        margin-right: 10px;
+      }
+
+      .send-button {
+        min-width: 80px;
+        align-self: flex-end;
+        background-color: #20bddd !important;
+        color: white !important;
+      }
+
+      form {
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 10px;
+        transition: box-shadow 0.3s;
+      }
+
+      form:focus-within {
+        box-shadow: 0 0 5px 2px rgba(0, 123, 255, 0.5);
+      }
+
+      textarea {
+        border: none;
+        padding: 5px;
+        resize: none;
+        overflow: hidden;
+      }
+
+      textarea:focus {
+        outline: none !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+
+      .message-input {
+        border: none;
+        padding: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container chat-container my-5">
+      <h1 class="mb-5">ChatGPT Demo</h1>
+      <div id="chat" class="d-flex flex-column">
+        <div id="messages" class="messages"></div>
+        <div id="loader" class="text-center my-3" style="display: none">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+        <form id="message-form" class="message-input-container form-box-shadow">
+          <textarea
+            id="message-input"
+            class="form-control message-input"
+            rows="3"
+            placeholder="Type a message..."
+            oninput="autoResizeTextarea()"
+          ></textarea>
+          <button type="submit" class="btn btn-info send-button">
+            <i class="fas fa-paper-plane"> Send</i>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.24.0/axios.min.js"></script>
+    <script>
+      const messagesElement = document.getElementById("messages");
+      const messageForm = document.getElementById("message-form");
+      const messageInput = document.getElementById("message-input");
+      const loaderElement = document.getElementById("loader");
+
+      function autoResizeTextarea() {
+        messageInput.style.height = "auto";
+        messageInput.style.height = messageInput.scrollHeight + "px";
+      }
+
+      function resetTextareaSize() {
+        messageInput.style.height = ""; // Menghapus ukuran yang ditetapkan sebelumnya
+      }
+
+      messageForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const message = messageInput.value.trim();
+        if (message !== "") {
+          // resetTextareaSize();
+          // appendMessage("user", message);
+          // messageInput.value = "";
+
+          // showLoader();
+
+          // try {
+          //   const response = await axios.post("/chat", { message });
+          //   const reply = response.data.reply;
+          //   appendMessage("assistant", reply);
+          // } catch (error) {
+          //   console.error("Error:", error);
+          //   appendMessage("system", "An error occurred");
+          // }
+
+          // hideLoader();
+          generate();
+        }
+      });
+
+      function showLoader() {
+        loaderElement.style.display = "block";
+      }
+
+      function hideLoader() {
+        loaderElement.style.display = "none";
+      }
+
+      const generate = async () => {
+        const API_URL = "https://api.openai.com/v1/chat/completions";
+        const API_KEY = "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";
+        let controller = null; // Store the AbortController instance
+
+        const message = messageInput.value.trim();
+        // Alert the user if no prompt value
+
+        // Disable the generate button and enable the stop button
+        // generateBtn.disabled = true;
+        // stopBtn.disabled = false;
+        messagesElement.innerHTML = "Generating...";
+
+        // Create a new AbortController instance
+        controller = new AbortController();
+        const signal = controller.signal;
+
+        try {
+          // Fetch the response from the OpenAI API with the signal from AbortController
+          const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${API_KEY}`,
+            },
+            body: JSON.stringify({
+              model: "gpt-3.5-turbo",
+              messages: [{ role: "user", content: message }],
+              max_tokens: 100,
+              stream: true, // For streaming responses
+            }),
+            signal, // Pass the signal to the fetch request
+          });
+
+          // Read the response as a stream of data
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder("utf-8");
+          messagesElement.innerText = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              break;
+            }
+
+            // Massage and parse the chunk of data
+            const chunk = decoder.decode(value);
+            const lines = chunk.split("\n");
+            let parsedLines = lines
+              .map((line) => line.replace(/^data: /, "").trim()) // Remove the "data: " prefix
+              .filter((line) => line !== "" && line !== "[DONE]") // Remove empty lines and "[DONE]"
+              .map((line) => JSON.parse(line)); // Parse the JSON string
+            console.log("parsedlines :", parsedLines);
+            for (const parsedLine of parsedLines) {
+              const { choices } = parsedLine;
+              const { delta } = choices[0];
+              const { content } = delta;
+              // Update the UI with the new content
+              if (content) {
+                messagesElement.innerHTML += content;
+              }
+            }
+          }
+        } catch (error) {
+          // Handle fetch request errors
+          if (signal.aborted) {
+            messagesElement.innerHTML = "Request aborted.";
+          } else {
+            console.error("Error:", error);
+            messagesElement.innerHTML = "Error occurred while generating.";
+          }
+        } finally {
+          // Enable the generate button and disable the stop button
+          // generateBtn.disabled = false;
+          // stopBtn.disabled = true;
+          controller = null; // Reset the AbortController instance
+        }
+      };
+    </script>
+  </body>
+</html>
