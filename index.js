@@ -1,11 +1,12 @@
+require('dotenv').config()
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const express = require("express");
 const app = express();
 const axios = require("axios");
 const { OpenAI } = require("openai");
 
 // Ganti dengan API Key yang Anda peroleh dari OpenAI
-const OPENAI_API_KEY = "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";
-// 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
+console.log("OPENAI :", OPENAI_API_KEY)
 
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
@@ -24,11 +25,10 @@ app.get("/", (req, res) => {
 });
 
 app.post("/chat", async (req, res) => {
-  const { converstaion } = req.body;
-
+  const { conversation } = req.body;
   try {
     const completion = await openai.chat.completions.create({
-      messages: converstaion,
+      messages: conversation,
       model: "gpt-3.5-turbo",
     });
 
